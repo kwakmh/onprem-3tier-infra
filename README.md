@@ -1,7 +1,7 @@
 # onprem-3tier-infra
 
-> VirtualBox 기반으로 5대의 Ubuntu Server VM을 구성하여 온프레미스 3-Tier 인프라를 직접 구축하는 프로젝트입니다.
-> Load Balancer, App Server 이중화, DB Replication, 백업/복구 자동화까지 직접 구현하며 인프라 운영 전반을 실습합니다.
+> VirtualBox 기반으로 5대의 Ubuntu Server VM을 구성하여 온프레미스 3-Tier 인프라를  구축하는 프로젝트입니다.
+> Load Balancer, App Server 이중화, DB Replication, 백업/복구 자동화까지 인프라 운영 전반을 실습합니다
 
 ---
 
@@ -15,7 +15,6 @@
 | Database | MariaDB |
 | 자동화 | Bash Script, Crontab |
 | 가상화 | VirtualBox |
-| SSH 접속 | PuTTY |
 
 ---
 
@@ -25,7 +24,6 @@
 - [전체 아키텍처](#전체-아키텍처)
 - [서버 구성](#서버-구성)
 - [네트워크 구성](#네트워크-구성)
-- [네트워크 검증](#네트워크-검증)
 - [진행 상태](#진행-상태)
 - [트러블슈팅](#트러블슈팅)
 
@@ -91,81 +89,6 @@ db-slave (10.0.0.32)
 | enp0s3 | NAT Network (InfraNetwork) | 서버 간 내부 통신 |
 | enp0s8 | Host-only Network | Windows에서 PuTTY SSH 접속 |
 
-### 내부 통신 (enp0s3)
-
-`10.0.0.x` 대역은 서버 간 통신에 사용합니다.
-
-```text
-lb-server → app-server-1
-10.0.0.10 → 10.0.0.21
-```
-
-### SSH 관리 접속 (enp0s8)
-
-`192.168.56.x` 대역은 Windows PuTTY를 통한 SSH 관리 접속에 사용합니다.
-
-```text
-Host Name: 192.168.56.10
-Port: 22
-Connection Type: SSH
-```
-
-### Netplan 설정 예시 (lb-server 기준)
-
-내부망 설정:
-
-```yaml
-network:
-  version: 2
-  ethernets:
-    enp0s3:
-      addresses:
-        - 10.0.0.10/24
-      routes:
-        - to: default
-          via: 10.0.0.1
-      nameservers:
-        addresses:
-          - 8.8.8.8
-```
-
-Host-only 설정:
-
-```yaml
-network:
-  version: 2
-  ethernets:
-    enp0s8:
-      addresses:
-        - 192.168.56.10/24
-      optional: true
-```
-
----
-
-## 네트워크 검증
-
-### 서버 간 내부 통신
-
-lb-server에서 나머지 서버로 ping 테스트를 수행했습니다.
-
-```bash
-ping -c 3 10.0.0.21  # app-server-1
-ping -c 3 10.0.0.22  # app-server-2
-ping -c 3 10.0.0.31  # db-master
-ping -c 3 10.0.0.32  # db-slave
-```
-
-모든 서버 간 통신 정상 확인 (0% packet loss)
-
-### 외부 인터넷 및 DNS 확인
-
-```bash
-ping -c 3 8.8.8.8     # 외부 IP 통신
-ping -c 3 google.com  # DNS 해석
-```
-
-외부 인터넷 통신 및 DNS 해석 정상 확인
 
 ---
 
@@ -220,7 +143,3 @@ Windows PuTTY
 5대 VM 모두 PuTTY SSH 접속 성공했습니다.
 
 ---
-
-## 다음 단계
-
-app-server-1, app-server-2에 Flask 앱을 구성하고, lb-server의 Nginx를 통해 두 서버로 트래픽을 분산하는 로드밸런싱 구조를 구성할 예정입니다.
