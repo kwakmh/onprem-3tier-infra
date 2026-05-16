@@ -1,7 +1,31 @@
 # onprem-3tier-infra
 
+
+## 프로젝트 소개
 > VirtualBox 기반으로 5대의 Ubuntu Server VM을 구성하여 온프레미스 3-Tier 인프라를  구축하는 프로젝트입니다.
 > Load Balancer, App Server 이중화, DB Replication, 백업/복구 자동화까지 인프라 운영 전반을 실습합니다
+
+---
+
+## 목차
+- [프로젝트 목표](#프로젝트-목표)
+- [기술 스택](#기술-스택)
+- [전체 아키텍처](#전체-아키텍처)
+- [서버 구성](#서버-구성)
+- [네트워크 구성](#네트워크-구성)
+- [진행 상태](#진행-상태)
+- [트러블슈팅](#트러블슈팅)
+
+
+
+## 프로젝트 목표
+
+- VirtualBox 기반 온프레미스 3-Tier 인프라 구성
+- Load Balancer, App Server, DB Server 역할 분리
+- Nginx 기반 로드밸런싱 및 App Server 이중화
+- MariaDB Master-Slave Replication 구성
+- Bash 스크립트 기반 DB 백업 자동화 및 복구 검증
+- 장애 시나리오 구성 및 대응 흐름 검증
 
 ---
 
@@ -15,28 +39,6 @@
 | Database | MariaDB |
 | 자동화 | Bash Script, Crontab |
 | 가상화 | VirtualBox |
-
----
-
-## 목차
-
-- [프로젝트 목표](#프로젝트-목표)
-- [전체 아키텍처](#전체-아키텍처)
-- [서버 구성](#서버-구성)
-- [네트워크 구성](#네트워크-구성)
-- [진행 상태](#진행-상태)
-- [트러블슈팅](#트러블슈팅)
-
----
-
-## 프로젝트 목표
-
-- VirtualBox 기반 온프레미스 3-Tier 인프라 구성
-- Load Balancer, App Server, DB Server 역할 분리
-- Nginx 기반 로드밸런싱 및 App Server 이중화
-- MariaDB Master-Slave Replication 구성
-- Bash 스크립트 기반 DB 백업 자동화 및 복구 검증
-- 장애 시나리오 구성 및 대응 흐름 검증
 
 ---
 
