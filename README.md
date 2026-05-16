@@ -112,34 +112,4 @@ db-slave (10.0.0.32)
 
 ## 트러블슈팅
 
-### PuTTY SSH 접속 실패 (포트포워딩 방식)
-
-**문제 상황**
-
-초기에 VirtualBox NAT Network 포트포워딩으로 Windows에서 VM SSH 접속을 시도했습니다.
-
-```text
-Windows 127.0.0.1:2210
-→ VirtualBox Port Forwarding
-→ lb-server 10.0.0.3:22
-```
-
-**원인 파악**
-
-VM 내부의 `ssh.service`는 정상 실행 중이었고 22번 포트도 열려 있었습니다.
-`Test-NetConnection` 명령어로 확인한 결과 Windows에서 2210 포트가 LISTENING 상태로 열리지 않았습니다.
-VirtualBox 포트포워딩 경로 자체가 정상적으로 동작하지 않았습니다.
-
-**해결 방법**
-
-각 VM에 Host-only Adapter를 추가하고 `192.168.56.x` 대역 고정 IP를 부여했습니다.
-
-```text
-Windows PuTTY
-→ 192.168.56.x:22
-→ VM SSH Server
-```
-
-5대 VM 모두 PuTTY SSH 접속 성공했습니다.
-
 ---
