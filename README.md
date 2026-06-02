@@ -15,6 +15,7 @@
 - [네트워크 구성](#네트워크-구성)
 - [App Server 구성](#app-server-구성)
 - [로드밸런서 구성](#로드밸런서-구성)
+- [DB 연동 구성](#db-연동-구성)
 - [진행 상태](#진행-상태)
 - [트러블슈팅](#트러블슈팅)
 
@@ -106,6 +107,10 @@ Flask 앱을 systemd 서비스로 등록하여 VM 부팅 시 자동 실행되도
 |----------|------|
 | `/` | 서버 이름, 실행 상태, 응답 시간 확인 |
 | `/health` | App Server 상태 확인 |
+| `/db` | App Server에서 DB-Master 연결 확인 |
+| `/visit` | 방문 기록을 DB에 저장 |
+| `/record` | DB에 저장된 최근 방문 기록 조회 |
+| `/info` | Nginx proxy header 및 요청자 IP 확인 |
 
 
 - Flask 코드: `app/app.py`
@@ -121,10 +126,44 @@ Nginx는 `10.0.0.10:80`으로 들어온 요청을 `10.0.0.21:5000`, `10.0.0.22:5
 
 `curl http://10.0.0.10` 요청 시 app-server-1과 app-server-2가 Round Robin 방식으로 번갈아 응답하는 것을 확인했습니다.
 
-app-server-1의 flask를 중지한 뒤 nginx의 로드밸런서가 장애가 발생한 app-server-1를 제외시키고, app-server-2에만 응답을 보내는 것을 확인했습니다
+app-server-1의 Flask를 중지한 뒤 nginx의 로드밸런서가 장애가 발생한 app-server-1를 제외시키고, app-server-2에만 응답을 보내는 것을 확인했습니다
 
 ---
+## DB 연동 구성
+3-Tier 구조에서 Database Tier 역할을 수행하기 위해 db-master에 MariaDB를 설치하고, 
+Flask App Server(app-server-1, app-server-2)에서 DB에 접속할 수 있도록 구성했습니다.
 
+`company_db` 데이터베이스와 `visits` 테이블을 생성하고, App Server에서 DB에 접속할 `app_user` 계정을 생성하였습니다
+
+| 항목 | 값 |
+|------|----|
+| DB Server | db-master |
+| DB IP | 10.0.0.31 |
+| Database | company_db |
+| Table | visits |
+| DB User | app_user |
+| 권한 | SELECT, INSERT |
+
+### App Server용 DB 계정 구성
+
+| DB 계정 | 접속 허용 IP | 용도 |
+|--------|--------------|------|
+| `app_user`@`10.0.0.21` | app-server-1 | App Server 1에서 DB 접속 |
+| `app_user`@`10.0.0.22` | app-server-2 | App Server 2에서 DB 접속 |
+
+
+### 검증 결과
+
+| 테스트 | 설명 |
+|--------|------|
+| `curl http://10.0.0.10/db` | App Server에서 DB-Master 연결 확인 |
+| `curl http://10.0.0.10/visit` | 방문 기록 DB 저장 확인 |
+| `curl http://10.0.0.10/record` | DB에 저장된 방문 기록 조회 확인 |
+
+`lb-server → app-server-1/app-server-2 → db-master` 흐름으로 요청이 전달되고,
+App Server를 통해 저장된 데이터가 MariaDB의 `visits` 테이블에 기록되는 것을 확인했습니다
+
+---
 ## 진행 상태
 
 - [x] 5대 Ubuntu Server VM 생성
@@ -137,6 +176,10 @@ app-server-1의 flask를 중지한 뒤 nginx의 로드밸런서가 장애가 발
 - [x] Flask App Server 구성 (app-server-1, app-server-2)
 - [x] Nginx Load Balancer 구성
 - [x] 로드밸런싱 및 장애 테스트
+- [x] DB-Master MariaDB 구성
+- [x] App Server → DB-Master 직접 접속 테스트
+- [x] Flask 애플리케이션 DB 연동
+- [x] LB → App → DB 요청 흐름 검증
 - [ ] MariaDB Master-Slave Replication 구성
 - [ ] DB 백업 자동화 (Bash + Crontab)
 - [ ] 장애 및 복구 테스트
