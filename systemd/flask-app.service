@@ -5,6 +5,7 @@ After=network.target
 [Service]
 User=moo
 WorkingDirectory=/home/moo/flask-app
+EnvironmentFile=/etc/flask-app/app.env
 ExecStart=/home/moo/flask-app/venv/bin/python /home/moo/flask-app/app.py
 Restart=always
 

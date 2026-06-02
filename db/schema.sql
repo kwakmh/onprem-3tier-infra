@@ -1,0 +1,10 @@
+CREATE DATABASE IF NOT EXISTS company_db;
+
+USE company_db;
+
+CREATE TABLE IF NOT EXISTS visits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    app_name VARCHAR(50),
+    client_ip VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,0 +1,5 @@
+Flask 
+# Flask는 App Server에서 HTTP 요청을 처리하고 JSON 응답을 반환하기 위해 필요
+
+PyMySQL
+# PyMySQL은 Flask 애플리케이션이 MariaDB로 접속해 데이터를 저장/조회하기 위해 필요  
