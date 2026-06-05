@@ -16,10 +16,10 @@
 - [App Server 구성](#app-server-구성)
 - [로드밸런서 구성](#로드밸런서-구성)
 - [DB 연동 구성](#db-연동-구성)
+- [DB Replication 구성](#db-replication-구성)
+- [DB 백업 및 복구 구성](#db-백업-및-복구-구성)
 - [진행 상태](#진행-상태)
 - [트러블슈팅](#트러블슈팅)
-
-
 
 ## 프로젝트 목표
 
@@ -146,13 +146,16 @@ Flask App Server(app-server-1, app-server-2)에서 DB에 접속할 수 있도록
 
 ### App Server용 DB 계정 구성
 
+
 | DB 계정 | 접속 허용 IP | 용도 |
 |--------|--------------|------|
 | `app_user`@`10.0.0.21` | app-server-1 | App Server 1에서 DB 접속 |
 | `app_user`@`10.0.0.22` | app-server-2 | App Server 2에서 DB 접속 |
 
 
+
 ### 검증 결과
+
 
 | 테스트 | 설명 |
 |--------|------|
@@ -164,6 +167,74 @@ Flask App Server(app-server-1, app-server-2)에서 DB에 접속할 수 있도록
 App Server를 통해 저장된 데이터가 MariaDB의 `visits` 테이블에 기록되는 것을 확인했습니다
 
 ---
+
+## DB Replication 구성 
+db-master의 변경사항을 db-slave로 복제하기 위해 Master-Slave Replication을 구성했습니다.
+
+db-master는 DB 변경 사항을 binary log에 기록하고, db-slave는 replication 전용 계정으로 db-master에 접속하여 db-master의 binary log를 읽고, db-slave의 relay log에 변경내용을 저장한 뒤 자신의 MariaDB에 반영합니다
+
+| 항목 | 값 |
+|---------|------|
+| Master DB | db-master |
+| Slave DB | db-slave |
+| Database | company_db |
+| Table | visits | 
+| Replication 계정 | repli_user |
+
+### 구성 흐름
+1. db-master에 binary log 활성화 설정
+2. db-master에 복제 전용 계정 (repli_user) 생성
+3. db-master에 초기 데이터 dump 생성 후 db-slave에 복원
+4. db-slave에 master 접속 정보, binary log 시작 위치 등록
+5. db-slave가 master의 변경 사항을 relay log에 저장하고, 자신의 MariaDB에 반영
+
+### 검증 결과
+
+- db-slave가 db-master의 binary log를 받아, relay log를 통해 자신의 MariaDB에 반영하는 것을 검증함 
+  
+ `Slave_IO_Running: Yes`
+ 
+`Slave_SQL_Running: Yes`
+
+`Seconds_Behind_Master: 0`
+
+---
+
+## DB 백업 및 복구 구성
+
+db-master의 company_db 데이터베이스의 데이터를 날짜/시간별로 압축하며 crontab으로 자동 백업하고, company_db 데이터베이스의 visits 테이블 손상 시 백업본으로 복구가 가능한지 확인했습니다
+
+| 항목 | 값 |
+|------|----|
+| 백업 대상 | db-master의 company_db |
+| 백업 방식 | mariadb-dump |
+| 백업 스크립트 | scripts/db_backup.sh |
+| 백업 저장 경로 | /home/moo/backup/db |
+| 백업 파일 형식 | backup_YYYYMMDD_HHMMSS.tar.gz |
+| 자동 실행 방식 | crontab |
+
+### 백업 흐름 
+1. mariadb-dump로 company_db 데이터베이스 덤프
+2. tar.gz로 압축하여 날짜/시간별 파일로 저장
+3. crontab으로 일정 시간마다 자동 실행 
+
+### 백업 검증
+crontab을 통해 일정 시간마다 백업 스크립트를 실행하고, 백업 압축 파일 `backup_YYYYMMDD_HHMMSS.tar.gz` 이 생성되는 것을 확인했습니다.
+
+### 복구 
+백업 파일로 실제 데이터 복구가 가능한지 확인하기 위해 `company_db` 데이터베이스의 `visits` 테이블을 삭제한 뒤 복구 테스트를 진행했습니다.
+
+### 복구 테스트 흐름 
+1.cron 자동 백업 잠시 중지
+2.`DROP TABLE visits;`로 visits 테이블 삭제
+3. 백업 파일 `backup_YYYYMMDD_HHMMSS.tar.gz` 압축 해제
+4. 압축 해제한 `company_db.sql`을 MariaDB에 입력하여 SQL문 실행
+5. 테이블과 데이터 정상 복구 확인 
+
+### 복구 검증
+visits 테이블을 DROP으로 삭제한 뒤, 백업 파일로 복구하여 기존 `visits` 테이블과 데이터가 정상 복원되는 것을 확인했습니다.
+
+
 ## 진행 상태
 
 - [x] 5대 Ubuntu Server VM 생성
@@ -180,9 +251,9 @@ App Server를 통해 저장된 데이터가 MariaDB의 `visits` 테이블에 기
 - [x] App Server → DB-Master 직접 접속 테스트
 - [x] Flask 애플리케이션 DB 연동
 - [x] LB → App → DB 요청 흐름 검증
-- [ ] MariaDB Master-Slave Replication 구성
-- [ ] DB 백업 자동화 (Bash + Crontab)
-- [ ] 장애 및 복구 테스트
+- [x] MariaDB Master-Slave Replication 구성
+- [x] DB 백업 자동화 (Bash + Crontab)
+- [x] 장애 및 복구 테스트
 
 ---
 
