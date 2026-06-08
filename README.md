@@ -18,8 +18,8 @@
 - [DB 연동 구성](#db-연동-구성)
 - [DB Replication 구성](#db-replication-구성)
 - [DB 백업 및 복구 구성](#db-백업-및-복구-구성)
-- [진행 상태](#진행-상태)
-- [트러블슈팅](#트러블슈팅)
+- [모니터링 구성](#모니터링-구성)
+  
 
 ## 프로젝트 목표
 
@@ -36,12 +36,13 @@
 
 | 분류 | 기술 |
 |------|------|
+| 가상화 | VirtualBox |
 | OS | Ubuntu Server 24.04 LTS |
 | Load Balancer | Nginx |
 | Application | Python Flask |
 | Database | MariaDB |
 | 자동화 | Bash Script, Crontab |
-| 가상화 | VirtualBox |
+| Monitoring | Node Exporter, Prometheus, Grafana | 
 
 ---
 
@@ -225,35 +226,77 @@ crontab을 통해 일정 시간마다 백업 스크립트를 실행하고, 백�
 백업 파일로 실제 데이터 복구가 가능한지 확인하기 위해 `company_db` 데이터베이스의 `visits` 테이블을 삭제한 뒤 복구 테스트를 진행했습니다.
 
 ### 복구 테스트 흐름 
-1.cron 자동 백업 잠시 중지
-2.`DROP TABLE visits;`로 visits 테이블 삭제
-3. 백업 파일 `backup_YYYYMMDD_HHMMSS.tar.gz` 압축 해제
-4. 압축 해제한 `company_db.sql`을 MariaDB에 입력하여 SQL문 실행
-5. 테이블과 데이터 정상 복구 확인 
+1. cron 자동 백업 잠시 중지
+2. `DROP TABLE visits;`로 visits 테이블 삭제
+3.  백업 파일 `backup_YYYYMMDD_HHMMSS.tar.gz` 압축 해제
+4.  압축 해제한 `company_db.sql`을 MariaDB에 입력하여 SQL문 실행
+5.  테이블과 데이터 정상 복구 확인 
 
 ### 복구 검증
 visits 테이블을 DROP으로 삭제한 뒤, 백업 파일로 복구하여 기존 `visits` 테이블과 데이터가 정상 복원되는 것을 확인했습니다.
 
-
-## 진행 상태
-
-- [x] 5대 Ubuntu Server VM 생성
-- [x] 각 VM Hostname 설정
-- [x] 서버 간 내부망 고정 IP 설정 (10.0.0.x)
-- [x] PuTTY SSH 접속용 Host-only IP 설정 (192.168.56.x)
-- [x] 서버 간 내부망 ping 통신 검증
-- [x] 외부 인터넷 통신 검증
-- [x] DNS 해석 검증
-- [x] Flask App Server 구성 (app-server-1, app-server-2)
-- [x] Nginx Load Balancer 구성
-- [x] 로드밸런싱 및 장애 테스트
-- [x] DB-Master MariaDB 구성
-- [x] App Server → DB-Master 직접 접속 테스트
-- [x] Flask 애플리케이션 DB 연동
-- [x] LB → App → DB 요청 흐름 검증
-- [x] MariaDB Master-Slave Replication 구성
-- [x] DB 백업 자동화 (Bash + Crontab)
-- [x] 장애 및 복구 테스트
-
 ---
+## 모니터링 구성
+
+- 5대의 서버(lb-server, app-server-1, app-server-2, db-master, db-slave)에 Node Exporter를 설치하고, 리소스 메트릭을 /metrics으로 노출했습니다.
+- lb-server에 Prometheus를 설치하여, Node Exporter를 통해 5대 서버의 CPU, 메모리, 디스크, 네트워크 메트릭을 15초마다 수집하도록 구성했습니다.
+- Grafana를 Prometheus와 연동하여, Prometheus가 수집한 CPU, 메모리, 디스크 등의 메트릭을 Grafana 대시보드로 한 번에 확인할 수 있도록 구성했습니다.
+
+### 메트릭 수집 흐름 
+
+```text
+5대 서버에 Node Exporter 설치
+10.0.0.10:9100/metrics
+10.0.0.21:9100/metrics
+10.0.0.22:9100/metrics
+10.0.0.31:9100/metrics
+10.0.0.32:9100/metrics
+        ↓
+lb-server의 Prometheus가 15초마다 수집
+        ↓
+Grafana 대시보드로 시각화
+```
+
+### 모니터링 검증
+Prometheus Targets 화면에서 5대 서버의 Node Exporter가 모두 UP 상태인 것을 확인했습니다
+```
+http://192.168.56.10:9090/targets
+프로메테우스가 9090번 포트에서 요청을 받아서 Node Exporter를 통해
+5대 서버의 metrics를 정상 수집하고 있는지 확인 
+
+nodes (5/5 up)
+
+10.0.0.10:9100  UP
+10.0.0.21:9100  UP
+10.0.0.22:9100  UP
+10.0.0.31:9100  UP
+10.0.0.32:9100  UP
+```
+### Grafana 대시보드 확인 
+Grafana에서 Prometheus 데이터 소스(`http://localhost:9090`)를 연결하고
+대시보드 Import(ID:1860)을 통해 CPU, 메모리, 디스크, 네트워크 메트릭 시각화했습니다. 
+
+### Grafana 부하 검증 
+
+```
+  lb-server에서 /visit 요청 반복 실행
+               ↓
+  Grafana에서 db서버 CPU 증가 확인
+```
+
+```
+  app-server에 CPU 부하테스트   
+               ↓
+  Grafana에서 app-server CPU 증가 확인
+```
+
+
+
+
+
+
+
+
+
+
 
